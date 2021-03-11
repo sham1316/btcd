@@ -233,6 +233,28 @@ func (r FutureGetMiningInfoResult) Receive() (*btcjson.GetMiningInfoResult, erro
 	return &infoResult, nil
 }
 
+// FutureGetMemPoolInfoResult is a future promise to deliver the result of a
+// GetMemPoolInfoAsync RPC invocation (or an applicable error).
+type FutureGetMempoolInfoResult chan *response
+
+// Receive waits for the response promised by the future and returns the mining
+// information.
+func (r FutureGetMempoolInfoResult) Receive() (*btcjson.GetMempoolInfoResult, error) {
+	res, err := receiveFuture(r)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal result as a getmempool result object.
+	var infoResult btcjson.GetMempoolInfoResult
+	err = json.Unmarshal(res, &infoResult)
+	if err != nil {
+		return nil, err
+	}
+
+	return &infoResult, nil
+}
+
 // GetMiningInfoAsync returns an instance of a type that can be used to get
 // the result of the RPC at some future time by invoking the Receive function on
 // the returned instance.
@@ -248,6 +270,21 @@ func (c *Client) GetMiningInfo() (*btcjson.GetMiningInfoResult, error) {
 	return c.GetMiningInfoAsync().Receive()
 }
 
+// GetMempoolInfoAsync returns an instance of a type that can be used to get
+// the result of the RPC at some future time by invoking the Receive function on
+// the returned instance.
+//
+// See GetMemPoolInfo for the blocking version and more details.
+func (c *Client) GetMempoolInfoAsync() FutureGetMempoolInfoResult {
+	cmd := btcjson.NewGetMempoolInfoCmd()
+	return c.sendCmd(cmd)
+}
+
+// GetMemPoolInfo returns getmempoolinfo.
+func (c *Client) GetMempoolInfo() (*btcjson.GetMempoolInfoResult, error) {
+	return c.GetMempoolInfoAsync().Receive()
+}
+
 // FutureGetNetworkHashPS is a future promise to deliver the result of a
 // GetNetworkHashPSAsync RPC invocation (or an applicable error).
 type FutureGetNetworkHashPS chan *response
@@ -255,14 +292,14 @@ type FutureGetNetworkHashPS chan *response
 // Receive waits for the response promised by the future and returns the
 // estimated network hashes per second for the block heights provided by the
 // parameters.
-func (r FutureGetNetworkHashPS) Receive() (int64, error) {
+func (r FutureGetNetworkHashPS) Receive() (float64, error) {
 	res, err := receiveFuture(r)
 	if err != nil {
 		return -1, err
 	}
 
 	// Unmarshal result as an int64.
-	var result int64
+	var result float64
 	err = json.Unmarshal(res, &result)
 	if err != nil {
 		return 0, err
@@ -286,7 +323,7 @@ func (c *Client) GetNetworkHashPSAsync() FutureGetNetworkHashPS {
 //
 // See GetNetworkHashPS2 to override the number of blocks to use and
 // GetNetworkHashPS3 to override the height at which to calculate the estimate.
-func (c *Client) GetNetworkHashPS() (int64, error) {
+func (c *Client) GetNetworkHashPS() (float64, error) {
 	return c.GetNetworkHashPSAsync().Receive()
 }
 
@@ -307,7 +344,7 @@ func (c *Client) GetNetworkHashPS2Async(blocks int) FutureGetNetworkHashPS {
 //
 // See GetNetworkHashPS to use defaults and GetNetworkHashPS3 to override the
 // height at which to calculate the estimate.
-func (c *Client) GetNetworkHashPS2(blocks int) (int64, error) {
+func (c *Client) GetNetworkHashPS2(blocks int) (float64, error) {
 	return c.GetNetworkHashPS2Async(blocks).Receive()
 }
 
@@ -327,7 +364,7 @@ func (c *Client) GetNetworkHashPS3Async(blocks, height int) FutureGetNetworkHash
 // of blocks since the last difficulty change will be used.
 //
 // See GetNetworkHashPS and GetNetworkHashPS2 to use defaults.
-func (c *Client) GetNetworkHashPS3(blocks, height int) (int64, error) {
+func (c *Client) GetNetworkHashPS3(blocks, height int) (float64, error) {
 	return c.GetNetworkHashPS3Async(blocks, height).Receive()
 }
 
