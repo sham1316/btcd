@@ -534,3 +534,30 @@ func (c *Client) GetBlockTemplateAsync(req *btcjson.TemplateRequest) FutureGetBl
 func (c *Client) GetBlockTemplate(req *btcjson.TemplateRequest) (*btcjson.GetBlockTemplateResult, error) {
 	return c.GetBlockTemplateAsync(req).Receive()
 }
+
+type FutureGetUptimeResponse chan *response
+
+func (r FutureGetUptimeResponse) Receive() (int64, error) {
+	res, err := receiveFuture(r)
+	if err != nil {
+		return 0, err
+	}
+
+	// Unmarshal result as a getwork result object.
+	var result int64
+	err = json.Unmarshal(res, &result)
+	if err != nil {
+		return 0, err
+	}
+
+	return result, nil
+}
+
+func (c *Client) GetUptimeAsync() FutureGetUptimeResponse {
+	cmd := btcjson.NewUptimeCmd()
+	return c.sendCmd(cmd)
+}
+
+func (c *Client) GetUptime() (int64, error) {
+	return c.GetUptimeAsync().Receive()
+}
